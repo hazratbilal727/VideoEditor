@@ -89,6 +89,21 @@ class VideoEngine {
   }
 
   /**
+   * Pause all active video elements in the pool
+   */
+  public pauseAll() {
+    this.videoPool.forEach((video) => {
+      if (!video.paused) {
+        try {
+          video.pause();
+        } catch {
+          // ignore
+        }
+      }
+    });
+  }
+
+  /**
    * Render composite frame onto canvas context
    */
   public renderComposite(
@@ -100,12 +115,17 @@ class VideoEngine {
     clips: TimelineClip[],
     mediaPoolMap: Map<string, { url: string; type: string }>,
     selectedClipId?: string,
-    showGuides: boolean = false
+    showGuides: boolean = false,
+    isPlaying: boolean = false,
+    playbackSpeed: number = 1.0
   ) {
     // 1. Clear background
     ctx.save();
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+    // Track active video asset IDs to pause unused videos
+    const activeVideoAssetIds = new Set<string>();
 
     // 2. Sort tracks (bottom to top for drawing layers)
     const sortedTracks = [...tracks].reverse();
@@ -120,9 +140,21 @@ class VideoEngine {
       );
 
       for (const clip of activeClips) {
-        this.renderClip(ctx, canvasWidth, canvasHeight, time, clip, mediaPoolMap);
+        if (clip.assetId) activeVideoAssetIds.add(clip.assetId);
+        this.renderClip(ctx, canvasWidth, canvasHeight, time, clip, mediaPoolMap, isPlaying, playbackSpeed);
       }
     }
+
+    // Pause any video in pool not currently active
+    this.videoPool.forEach((video, assetId) => {
+      if (!activeVideoAssetIds.has(assetId) && !video.paused) {
+        try {
+          video.pause();
+        } catch {
+          // ignore
+        }
+      }
+    });
 
     // 3. Render Safe Area Guides if enabled
     if (showGuides) {
@@ -149,7 +181,9 @@ class VideoEngine {
     canvasH: number,
     time: number,
     clip: TimelineClip,
-    mediaPoolMap: Map<string, { url: string; type: string }>
+    mediaPoolMap: Map<string, { url: string; type: string }>,
+    isPlaying: boolean = false,
+    playbackSpeed: number = 1.0
   ) {
     const elapsed = time - clip.start;
     const remaining = clip.start + clip.duration - time;
@@ -239,9 +273,25 @@ class VideoEngine {
         const video = this.getVideoElement(clip.assetId, asset.url);
         const sourceTime = clip.trimStart + elapsed * clip.speed;
 
-        // Sync video time if not actively playing in lockstep
-        if (Math.abs(video.currentTime - sourceTime) > 0.08) {
-          video.currentTime = sourceTime;
+        if (isPlaying) {
+          video.playbackRate = Math.max(0.1, clip.speed * playbackSpeed);
+          if (video.paused) {
+            video.currentTime = sourceTime;
+            video.play().catch(() => {});
+          } else if (Math.abs(video.currentTime - sourceTime) > 0.35) {
+            video.currentTime = sourceTime;
+          }
+        } else {
+          if (!video.paused) {
+            try {
+              video.pause();
+            } catch {
+              // ignore
+            }
+          }
+          if (Math.abs(video.currentTime - sourceTime) > 0.02) {
+            video.currentTime = sourceTime;
+          }
         }
 
         const vW = video.videoWidth || canvasW;

@@ -26,40 +26,77 @@
     width: 100vw;
   }
 
-  /* Custom subtle dark scrollbars */
+  /* CapCut-style ultra-subtle dark scrollbars */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
   ::-webkit-scrollbar-track {
-    background: #111111;
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #2a2a2a;
-    border-radius: 3px;
+    background: #2b2b2b;
+    border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #404040;
+    background: #444444;
   }
 }
 
-/* Range input styling in monochrome */
+/* CapCut range slider styling */
 input[type="range"] {
-  accent-color: #e5e5e5;
+  accent-color: #ffffff;
+  -webkit-appearance: none;
+  background: #262626;
+  height: 3px;
+  border-radius: 2px;
 }
 
-/* Timeline scrubber styling */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 11px;
+  width: 11px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  border: 1px solid #111111;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  transition: transform 0.1s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* Timeline grid & ruler styling */
 .timeline-track-grid {
-  background-size: 40px 100%;
-  background-image: linear-gradient(to right, #1f1f1f 1px, transparent 1px);
+  background-size: 50px 100%;
+  background-image: linear-gradient(to right, #1b1b1b 1px, transparent 1px);
 }
 
 .timeline-ruler-grid {
-  background-size: 20px 100%;
-  background-image: linear-gradient(to right, #2a2a2a 1px, transparent 1px);
+  background-size: 25px 100%;
+  background-image: linear-gradient(to right, #242424 1px, transparent 1px);
+}
+
+/* Filmstrip perforation illusion */
+.filmstrip-dots {
+  background-image: radial-gradient(#111 20%, transparent 20%);
+  background-position: 0 0;
+  background-size: 8px 8px;
 }
 
 /* Font tabular numbers for frame-accurate timecodes */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
+}
+
+/* Smooth fade animations */
+.fade-in {
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
 }

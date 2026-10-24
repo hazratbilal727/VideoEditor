@@ -383,6 +383,18 @@ export async function createDefaultSampleAssets(): Promise<MediaAsset[]> {
 
     const assets: MediaAsset[] = [
       {
+        id: 'asset_fashion_models',
+        name: 'Fashion show of models. Two beautiful models of Slavic appearance. Two be...',
+        type: 'video',
+        url: '/fashion_models.mp4',
+        duration: 6.9,
+        width: 1280,
+        height: 720,
+        fps: 30,
+        thumbnailUrl: '/fashion_models.jpg',
+        dateAdded: Date.now(),
+      },
+      {
         id: 'asset_countdown',
         name: 'Film_Leader_Countdown.webm',
         type: 'video',
@@ -393,19 +405,6 @@ export async function createDefaultSampleAssets(): Promise<MediaAsset[]> {
         height: 720,
         fps: 30,
         thumbnailUrl: countdown.thumbnailUrl,
-        dateAdded: Date.now(),
-      },
-      {
-        id: 'asset_wireframe',
-        name: 'Isometric_Wireframe_3D.webm',
-        type: 'video',
-        url: wireframe.url,
-        blob: wireframe.blob,
-        duration: 6,
-        width: 1280,
-        height: 720,
-        fps: 30,
-        thumbnailUrl: wireframe.thumbnailUrl,
         dateAdded: Date.now() + 1,
       },
       {

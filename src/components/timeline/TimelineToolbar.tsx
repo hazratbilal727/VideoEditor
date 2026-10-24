@@ -1,18 +1,23 @@
 import React from 'react';
 import {
   MousePointer,
-  Scissors,
-  Split,
+  Undo2,
+  Redo2,
   Trash2,
-  Copy,
   Magnet,
   ZoomIn,
   ZoomOut,
   Maximize2,
-  Plus,
+  ChevronDown,
+  Crop,
+  Sparkles,
+  Mic,
+  Snowflake,
+  Repeat,
+  Link,
+  SplitSquareVertical,
 } from 'lucide-react';
 import { useEditorStore } from '../../store/editorStore';
-import { TimelineTool } from '../../types/editor';
 
 export const TimelineToolbar: React.FC = () => {
   const {
@@ -21,138 +26,248 @@ export const TimelineToolbar: React.FC = () => {
     snappingEnabled,
     selectedClipIds,
     project,
+    undoStack,
+    redoStack,
+    rippleMode,
+    undo,
+    redo,
+    setRippleMode,
     setActiveTool,
     setZoom,
     setSnappingEnabled,
     splitClipAtPlayhead,
     deleteSelectedClips,
-    duplicateSelectedClips,
-    addTrack,
+    updateClip,
   } = useEditorStore();
 
   const handleFitToScreen = () => {
-    const maxEnd = Math.max(5, ...project.clips.map((c) => c.start + c.duration));
-    const containerWidth = window.innerWidth - 380; // approximate width of timeline area
-    const calculatedZoom = Math.max(10, Math.min(200, containerWidth / maxEnd));
+    const maxEnd = Math.max(6.9, ...project.clips.map((c) => c.start + c.duration));
+    const containerWidth = window.innerWidth - 380;
+    const calculatedZoom = Math.max(15, Math.min(180, containerWidth / maxEnd));
     setZoom(calculatedZoom);
   };
 
+  const selectedClip = project.clips.find((c) => selectedClipIds.includes(c.id));
+
+  const handleSplitLeft = () => {
+    const playhead = useEditorStore.getState().playhead;
+    if (selectedClip && playhead > selectedClip.start && playhead < selectedClip.start + selectedClip.duration) {
+      const trimAmount = playhead - selectedClip.start;
+      updateClip(selectedClip.id, {
+        start: playhead,
+        duration: selectedClip.duration - trimAmount,
+        trimStart: selectedClip.trimStart + trimAmount,
+      });
+    }
+  };
+
+  const handleSplitRight = () => {
+    const playhead = useEditorStore.getState().playhead;
+    if (selectedClip && playhead > selectedClip.start && playhead < selectedClip.start + selectedClip.duration) {
+      const newDuration = playhead - selectedClip.start;
+      updateClip(selectedClip.id, {
+        duration: newDuration,
+        trimEnd: selectedClip.trimStart + newDuration,
+      });
+    }
+  };
+
   return (
-    <div className="h-9 bg-[#141414] border-b border-[#242424] px-3 flex items-center justify-between text-xs text-neutral-300 select-none">
-      {/* Left Tools: Selection, Razor/Split, Quick Split, Duplicate, Delete */}
+    <div className="h-9 bg-[#151518] border-b border-[#232328] px-2.5 flex items-center justify-between text-xs text-neutral-300 select-none">
+      {/* Left Tools Matching Screenshot Ordering */}
       <div className="flex items-center gap-1">
-        {/* Tool: Select */}
+        {/* 1. Pointer / Select Tool with chevron */}
+        <div className="flex items-center">
+          <button
+            onClick={() => setActiveTool('select')}
+            className={`p-1.5 rounded flex items-center gap-0.5 transition-colors cursor-pointer ${
+              activeTool === 'select'
+                ? 'text-[#00e5ff] bg-[#22222a]'
+                : 'text-neutral-400 hover:text-white hover:bg-[#202026]'
+            }`}
+            title="Selection Tool (V)"
+          >
+            <MousePointer size={13} />
+            <ChevronDown size={8} className="text-neutral-500" />
+          </button>
+        </div>
+
+        {/* 2. Undo */}
         <button
-          onClick={() => setActiveTool('select')}
-          className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-mono ${
-            activeTool === 'select'
-              ? 'bg-[#2a2a2a] text-white border border-[#444]'
-              : 'text-neutral-400 hover:text-white hover:bg-[#1f1f1f]'
-          }`}
-          title="Selection Tool (V)"
+          onClick={undo}
+          disabled={undoStack.length === 0}
+          className="p-1.5 rounded text-neutral-400 hover:text-white hover:bg-[#202026] disabled:opacity-30 transition-colors cursor-pointer"
+          title="Undo (Ctrl+Z)"
         >
-          <MousePointer size={13} />
-          <span>Select</span>
+          <Undo2 size={13} />
         </button>
 
-        {/* Tool: Split */}
+        {/* 3. Redo */}
         <button
-          onClick={() => setActiveTool('split')}
-          className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-mono ${
-            activeTool === 'split'
-              ? 'bg-[#2a2a2a] text-white border border-[#444]'
-              : 'text-neutral-400 hover:text-white hover:bg-[#1f1f1f]'
-          }`}
-          title="Razor Blade Tool (C)"
+          onClick={redo}
+          disabled={redoStack.length === 0}
+          className="p-1.5 rounded text-neutral-400 hover:text-white hover:bg-[#202026] disabled:opacity-30 transition-colors cursor-pointer"
+          title="Redo (Ctrl+Y)"
         >
-          <Scissors size={13} />
-          <span>Razor</span>
+          <Redo2 size={13} />
         </button>
 
-        <div className="h-4 w-px bg-[#262626] mx-1" />
-
-        {/* Action: Split at Playhead */}
+        {/* 4. Split at Playhead (Highlighted in red box in screenshot!) */}
         <button
           onClick={() => splitClipAtPlayhead()}
-          className="flex items-center gap-1 px-2 py-1 bg-[#1a1a1a] hover:bg-[#252525] hover:text-white text-neutral-300 rounded border border-[#2e2e2e] text-[11px]"
-          title="Split Clip at Playhead (Ctrl+B / S)"
+          className="px-2 py-1 bg-[#1e1e24] hover:bg-[#272730] text-neutral-200 hover:text-white rounded border border-[#2e2e38] transition-colors cursor-pointer font-mono font-bold text-[12px] flex items-center justify-center tracking-tighter"
+          title="Split at Playhead (Ctrl+B / S)"
         >
-          <Split size={13} />
-          <span>Split</span>
+          <span>][</span>
         </button>
 
-        {/* Action: Duplicate */}
+        {/* 5. Split Left (Trim Left of Playhead) */}
         <button
-          onClick={duplicateSelectedClips}
-          disabled={selectedClipIds.length === 0}
-          className="p-1 hover:bg-[#222222] hover:text-white disabled:opacity-30 rounded text-neutral-400"
-          title="Duplicate Selected (Ctrl+D)"
+          onClick={handleSplitLeft}
+          className="px-1.5 py-1 text-neutral-400 hover:text-white hover:bg-[#202026] rounded transition-colors cursor-pointer font-mono text-[11px]"
+          title="Split Left / Delete In-Point (Q)"
         >
-          <Copy size={13} />
+          <span>[|</span>
         </button>
 
-        {/* Action: Delete */}
+        {/* 6. Split Right (Trim Right of Playhead) */}
+        <button
+          onClick={handleSplitRight}
+          className="px-1.5 py-1 text-neutral-400 hover:text-white hover:bg-[#202026] rounded transition-colors cursor-pointer font-mono text-[11px]"
+          title="Split Right / Delete Out-Point (W)"
+        >
+          <span>|]</span>
+        </button>
+
+        {/* 7. Delete */}
         <button
           onClick={deleteSelectedClips}
           disabled={selectedClipIds.length === 0}
-          className="p-1 hover:bg-[#222222] hover:text-white disabled:opacity-30 rounded text-neutral-400"
-          title="Delete Selected (Del)"
+          className="p-1.5 rounded text-neutral-400 hover:text-white hover:bg-[#202026] disabled:opacity-30 transition-colors cursor-pointer"
+          title="Delete Selected (Backspace / Del)"
         >
           <Trash2 size={13} />
         </button>
 
-        <div className="h-4 w-px bg-[#262626] mx-1" />
-
-        {/* Snapping */}
+        {/* 8. Freeze Frame */}
         <button
-          onClick={() => setSnappingEnabled(!snappingEnabled)}
-          className={`p-1 rounded ${
-            snappingEnabled ? 'text-white bg-[#262626]' : 'text-neutral-500 hover:text-neutral-300'
-          }`}
-          title="Magnetic Snapping (S)"
+          onClick={() => {
+            if (selectedClip) {
+              useEditorStore.getState().setStatusMessage(`Freeze frame captured from ${selectedClip.name}`);
+            }
+          }}
+          className="p-1.5 rounded text-neutral-400 hover:text-white hover:bg-[#202026] transition-colors cursor-pointer"
+          title="Freeze Frame"
         >
-          <Magnet size={13} />
+          <Snowflake size={13} />
+        </button>
+
+        {/* 9. Crop */}
+        <button
+          onClick={() => {
+            if (selectedClip) {
+              useEditorStore.getState().setActiveInspectorTab('video');
+            }
+          }}
+          className="p-1.5 rounded text-neutral-400 hover:text-white hover:bg-[#202026] transition-colors cursor-pointer"
+          title="Crop Tool"
+        >
+          <Crop size={13} />
+        </button>
+
+        {/* 10. Reverse / Flip */}
+        <button
+          onClick={() => {
+            if (selectedClip) {
+              updateClip(selectedClip.id, { reverse: !selectedClip.reverse });
+              useEditorStore.getState().setStatusMessage(`Clip reverse toggled: ${!selectedClip.reverse}`);
+            }
+          }}
+          className="p-1.5 rounded text-neutral-400 hover:text-white hover:bg-[#202026] transition-colors cursor-pointer"
+          title="Reverse / Flip Playback"
+        >
+          <Repeat size={13} />
+        </button>
+
+        {/* 11. HD / Enhance */}
+        <button
+          className="px-1.5 py-0.5 rounded text-neutral-400 hover:text-white hover:bg-[#202026] transition-colors cursor-pointer font-mono font-semibold text-[10px]"
+          title="Enhance Clip Quality (HD)"
+        >
+          HD
+        </button>
+
+        {/* 12. Voiceover / Mic */}
+        <button
+          onClick={() => {
+            useEditorStore.getState().setStatusMessage('Microphone recording ready');
+          }}
+          className="p-1.5 rounded text-neutral-400 hover:text-white hover:bg-[#202026] transition-colors cursor-pointer"
+          title="Record Audio Voiceover"
+        >
+          <Mic size={13} />
         </button>
       </div>
 
-      {/* Right: Add Tracks & Zoom Controls */}
-      <div className="flex items-center gap-3">
-        {/* Add Track Dropdown/Buttons */}
-        <div className="flex items-center gap-1 border-r border-[#262626] pr-2">
-          <button
-            onClick={() => addTrack('video')}
-            className="flex items-center gap-0.5 px-1.5 py-0.5 bg-[#181818] hover:bg-[#222] text-neutral-300 rounded text-[10px] border border-[#2b2b2b]"
-            title="Add Video Track"
-          >
-            <Plus size={10} />
-            <span>+Video</span>
-          </button>
-          <button
-            onClick={() => addTrack('audio')}
-            className="flex items-center gap-0.5 px-1.5 py-0.5 bg-[#181818] hover:bg-[#222] text-neutral-300 rounded text-[10px] border border-[#2b2b2b]"
-            title="Add Audio Track"
-          >
-            <Plus size={10} />
-            <span>+Audio</span>
-          </button>
-          <button
-            onClick={() => addTrack('text')}
-            className="flex items-center gap-0.5 px-1.5 py-0.5 bg-[#181818] hover:bg-[#222] text-neutral-300 rounded text-[10px] border border-[#2b2b2b]"
-            title="Add Text Track"
-          >
-            <Plus size={10} />
-            <span>+Text</span>
-          </button>
-        </div>
+      {/* Right Controls Matching Screenshot */}
+      <div className="flex items-center gap-2">
+        {/* Snapping / Magnet (Bright Cyan Active in Screenshot) */}
+        <button
+          onClick={() => setSnappingEnabled(!snappingEnabled)}
+          className={`p-1.5 rounded transition-all cursor-pointer ${
+            snappingEnabled
+              ? 'bg-[#00e5ff] text-black shadow-sm font-bold'
+              : 'text-neutral-400 hover:text-white hover:bg-[#202026]'
+          }`}
+          title="Magnetic Snapping (N)"
+        >
+          <Magnet size={13} />
+        </button>
 
-        {/* Zoom Controls */}
-        <div className="flex items-center gap-1.5">
+        {/* Auto Ripple Toggle */}
+        <button
+          onClick={() => setRippleMode(!rippleMode)}
+          className={`p-1.5 rounded transition-colors cursor-pointer ${
+            rippleMode
+              ? 'text-[#00e5ff] bg-[#202028]'
+              : 'text-neutral-400 hover:text-white hover:bg-[#202026]'
+          }`}
+          title="Auto Ripple Mode"
+        >
+          <SplitSquareVertical size={13} />
+        </button>
+
+        {/* Link / Group Clips with chevron */}
+        <button
+          className="p-1.5 rounded text-neutral-400 hover:text-white hover:bg-[#202026] flex items-center gap-0.5 transition-colors cursor-pointer"
+          title="Link Clips Selection"
+        >
+          <Link size={13} />
+          <ChevronDown size={8} className="text-neutral-500" />
+        </button>
+
+        {/* Split/Razor Tool switch */}
+        <button
+          onClick={() => setActiveTool(activeTool === 'split' ? 'select' : 'split')}
+          className={`p-1.5 rounded transition-colors cursor-pointer flex items-center gap-0.5 ${
+            activeTool === 'split'
+              ? 'text-[#00e5ff] bg-[#202028]'
+              : 'text-neutral-400 hover:text-white hover:bg-[#202026]'
+          }`}
+          title="Razor Blade Tool (C)"
+        >
+          <span className="font-mono text-[11px] font-bold">][</span>
+          <ChevronDown size={8} className="text-neutral-500" />
+        </button>
+
+        {/* Zoom Slider + In / Out + Fit */}
+        <div className="flex items-center gap-1 pl-1 border-l border-[#26262e]">
           <button
             onClick={() => setZoom(zoom - 10)}
-            className="p-1 hover:text-white text-neutral-400"
+            className="p-1 hover:text-white text-neutral-400 transition-colors"
             title="Zoom Out (-)"
           >
-            <ZoomOut size={13} />
+            <ZoomOut size={12} />
           </button>
 
           <input
@@ -161,24 +276,25 @@ export const TimelineToolbar: React.FC = () => {
             max={200}
             value={zoom}
             onChange={(e) => setZoom(parseFloat(e.target.value))}
-            className="w-20 h-1 bg-[#262626] rounded appearance-none cursor-pointer accent-white"
+            className="w-16 h-1 bg-[#282834] rounded appearance-none cursor-pointer accent-[#00e5ff]"
             title="Timeline Zoom"
-          />
+          >
+          </input>
 
           <button
             onClick={() => setZoom(zoom + 10)}
-            className="p-1 hover:text-white text-neutral-400"
+            className="p-1 hover:text-white text-neutral-400 transition-colors"
             title="Zoom In (+)"
           >
-            <ZoomIn size={13} />
+            <ZoomIn size={12} />
           </button>
 
           <button
             onClick={handleFitToScreen}
-            className="p-1 hover:text-white text-neutral-400"
+            className="p-1 hover:text-white text-neutral-400 transition-colors"
             title="Fit to Timeline"
           >
-            <Maximize2 size={13} />
+            <Maximize2 size={12} />
           </button>
         </div>
       </div>

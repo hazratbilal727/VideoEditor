@@ -87,8 +87,8 @@ export interface EditorStoreState {
   selectedClipIds: string[];
   selectedTrackId: string | null;
   activeTool: TimelineTool;
-  activeLeftTab: 'media' | 'audio' | 'text' | 'transitions' | 'effects' | 'templates';
-  activeInspectorTab: 'transform' | 'color' | 'audio' | 'effects' | 'keyframes' | 'text' | 'project';
+  activeLeftTab: 'media' | 'audio' | 'text' | 'stickers' | 'effects' | 'transitions' | 'filters' | 'adjustments';
+  activeInspectorTab: 'video' | 'audio' | 'speed' | 'animation' | 'adjustments' | 'text' | 'project';
 
   // Timeline Display
   zoom: number; // pixels per second
@@ -194,7 +194,7 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
   selectedTrackId: null,
   activeTool: 'select',
   activeLeftTab: 'media',
-  activeInspectorTab: 'transform',
+  activeInspectorTab: 'video',
 
   zoom: 50, // 50px per second
   snappingEnabled: true,
@@ -367,7 +367,7 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
       return {
         project: updated,
         selectedClipIds: [clip.id],
-        activeInspectorTab: clip.type === 'text' ? 'text' : 'transform',
+        activeInspectorTab: clip.type === 'text' ? 'text' : 'video',
         statusMessage: `Added clip "${clip.name}"`,
       };
     });
@@ -433,16 +433,32 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
     state.pushHistory();
 
     const toDelete = new Set(state.selectedClipIds);
+    const toDeleteClips = state.project.clips.filter((c) => toDelete.has(c.id));
+
     set((s) => {
+      let updatedClips = s.project.clips.filter((c) => !toDelete.has(c.id));
+
+      // Ripple edit: shift subsequent clips back on the same track
+      if (s.rippleMode) {
+        toDeleteClips.forEach((delClip) => {
+          updatedClips = updatedClips.map((c) => {
+            if (c.trackId === delClip.trackId && c.start > delClip.start) {
+              return { ...c, start: Math.max(0, c.start - delClip.duration) };
+            }
+            return c;
+          });
+        });
+      }
+
       const updated = {
         ...s.project,
-        clips: s.project.clips.filter((c) => !toDelete.has(c.id)),
+        clips: updatedClips,
       };
       ProjectStorage.saveAutosave(updated);
       return {
         project: updated,
         selectedClipIds: [],
-        statusMessage: `Deleted ${toDelete.size} clip(s)`,
+        statusMessage: `Deleted ${toDelete.size} clip(s)${s.rippleMode ? ' (Ripple)' : ''}`,
       };
     });
   },
@@ -611,7 +627,7 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
       const clip = s.project.clips.find((c) => c.id === id);
       return {
         selectedClipIds: newSelection,
-        activeInspectorTab: clip?.type === 'text' ? 'text' : 'transform',
+        activeInspectorTab: clip?.type === 'text' ? 'text' : 'video',
       };
     });
   },

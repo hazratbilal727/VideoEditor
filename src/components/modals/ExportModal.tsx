@@ -132,12 +132,14 @@ export const ExportModal: React.FC = () => {
             /* Progress Display */
             <div className="space-y-4 py-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-white capitalize">
+                <span className="text-sm font-semibold text-white">
                   {exportProgress.status === 'completed'
                     ? 'Export Completed!'
                     : exportProgress.status === 'error'
                     ? 'Export Failed'
-                    : 'Rendering & Compositing...'}
+                    : format === 'mp4' && exportProgress.progress >= 95
+                    ? 'Transcoding H.264 with local FFmpeg...'
+                    : 'Rendering & Compositing Frames...'}
                 </span>
                 <span className="font-mono text-white text-sm">
                   {exportProgress.progress}%
@@ -230,23 +232,51 @@ export const ExportModal: React.FC = () => {
 
               {/* Format selection */}
               <div>
-                <label className="block text-[11px] font-mono text-neutral-400 mb-1">
-                  EXPORT FORMAT
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-mono text-neutral-400">
+                    EXPORT FORMAT
+                  </label>
+                  <span className="text-[10px] font-mono text-neutral-400 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                    Local FFmpeg H.264
+                  </span>
+                </div>
                 <div className="grid grid-cols-3 gap-2">
-                  {(['mp4', 'webm', 'wav'] as const).map((fmt) => (
-                    <button
-                      key={fmt}
-                      onClick={() => setFormat(fmt)}
-                      className={`py-2 rounded border font-mono text-xs uppercase ${
-                        format === fmt
-                          ? 'bg-white text-black border-white font-bold'
-                          : 'bg-[#181818] text-neutral-400 border-[#262626] hover:text-white'
-                      }`}
-                    >
-                      {fmt}
-                    </button>
-                  ))}
+                  <button
+                    onClick={() => setFormat('mp4')}
+                    className={`py-2 px-1 rounded border font-mono text-xs flex flex-col items-center justify-center gap-0.5 ${
+                      format === 'mp4'
+                        ? 'bg-white text-black border-white font-bold'
+                        : 'bg-[#181818] text-neutral-400 border-[#262626] hover:text-white'
+                    }`}
+                  >
+                    <span>MP4</span>
+                    <span className="text-[9px] font-sans opacity-80">H.264 Universal</span>
+                  </button>
+
+                  <button
+                    onClick={() => setFormat('webm')}
+                    className={`py-2 px-1 rounded border font-mono text-xs flex flex-col items-center justify-center gap-0.5 ${
+                      format === 'webm'
+                        ? 'bg-white text-black border-white font-bold'
+                        : 'bg-[#181818] text-neutral-400 border-[#262626] hover:text-white'
+                    }`}
+                  >
+                    <span>WEBM</span>
+                    <span className="text-[9px] font-sans opacity-80">VP9 Direct</span>
+                  </button>
+
+                  <button
+                    onClick={() => setFormat('wav')}
+                    className={`py-2 px-1 rounded border font-mono text-xs flex flex-col items-center justify-center gap-0.5 ${
+                      format === 'wav'
+                        ? 'bg-white text-black border-white font-bold'
+                        : 'bg-[#181818] text-neutral-400 border-[#262626] hover:text-white'
+                    }`}
+                  >
+                    <span>WAV</span>
+                    <span className="text-[9px] font-sans opacity-80">Audio Mixdown</span>
+                  </button>
                 </div>
               </div>
 

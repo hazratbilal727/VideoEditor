@@ -26,8 +26,12 @@ export default function App() {
     setStatusMessage,
   } = useEditorStore();
 
-  const [timelineHeightPercent, setTimelineHeightPercent] = useState<number>(44);
+  const [timelineHeightPercent, setTimelineHeightPercent] = useState<number>(38);
+  const [leftPanelWidth, setLeftPanelWidth] = useState<number>(430);
+  const [inspectorWidth, setInspectorWidth] = useState<number>(340);
   const [isResizingTimeline, setIsResizingTimeline] = useState(false);
+  const [isResizingLeft, setIsResizingLeft] = useState(false);
+  const [isResizingInspector, setIsResizingInspector] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Initialize Project and default offline media assets
@@ -68,7 +72,7 @@ export default function App() {
             transform: {
               x: 0,
               y: 0,
-              scale: 1,
+              scale: 1.19, // 119% matching CapCut screenshot
               rotation: 0,
               opacity: 1,
               flipH: false,
@@ -78,59 +82,12 @@ export default function App() {
             },
             colorGrading: {
               brightness: 0,
-              contrast: 10,
+              contrast: 0,
               saturation: 0,
               exposure: 0,
               temperature: 0,
               tint: 0,
-              vignette: 15,
-              grayscale: 0,
-              sepia: 0,
-              blur: 0,
-              sharpen: 0,
-              invert: false,
-            },
-            audio: { volume: 1, muted: false, pan: 0, fadeIn: 0.1, fadeOut: 0.2 },
-            transitionIn: { type: 'cross-dissolve', duration: 0.8 },
-            transitionOut: { type: 'fade-to-black', duration: 0.8 },
-            keyframes: [],
-          };
-          addClip(sampleVideo1);
-        }
-
-        if (videoTrack && samples[1]) {
-          const sampleVideo2: TimelineClip = {
-            id: 'clip_sample_2',
-            trackId: videoTrack.id,
-            assetId: samples[1].id,
-            type: 'video',
-            name: samples[1].name,
-            start: samples[0] ? samples[0].duration : 5,
-            duration: samples[1].duration,
-            trimStart: 0,
-            trimEnd: samples[1].duration,
-            sourceDuration: samples[1].duration,
-            speed: 1,
-            reverse: false,
-            transform: {
-              x: 0,
-              y: 0,
-              scale: 1,
-              rotation: 0,
-              opacity: 1,
-              flipH: false,
-              flipV: false,
-              blendMode: 'normal',
-              crop: { top: 0, bottom: 0, left: 0, right: 0 },
-            },
-            colorGrading: {
-              brightness: 0,
-              contrast: 20,
-              saturation: 0,
-              exposure: 0,
-              temperature: 0,
-              tint: 0,
-              vignette: 25,
+              vignette: 0,
               grayscale: 0,
               sepia: 0,
               blur: 0,
@@ -138,121 +95,15 @@ export default function App() {
               invert: false,
             },
             audio: { volume: 1, muted: false, pan: 0, fadeIn: 0, fadeOut: 0 },
-            transitionIn: { type: 'zoom-in', duration: 0.8 },
-            transitionOut: { type: 'none', duration: 0 },
-            keyframes: [],
-          };
-          addClip(sampleVideo2);
-        }
-
-        if (textTrack) {
-          const sampleText: TimelineClip = {
-            id: 'clip_sample_title',
-            trackId: textTrack.id,
-            type: 'text',
-            name: 'MONO CINEMA TITLE',
-            start: 1.0,
-            duration: 4.5,
-            trimStart: 0,
-            trimEnd: 4.5,
-            sourceDuration: 4.5,
-            speed: 1,
-            reverse: false,
-            text: {
-              content: 'MONO EDITOR\nOFFLINE STUDIO',
-              fontFamily: 'system-ui, sans-serif',
-              fontSize: 48,
-              fontWeight: '800',
-              color: '#FFFFFF',
-              strokeColor: '#000000',
-              strokeWidth: 0,
-              shadowColor: 'rgba(0,0,0,0.8)',
-              shadowBlur: 8,
-              align: 'center',
-              letterSpacing: 4,
-              lineHeight: 1.2,
-              backgroundBox: true,
-              backgroundColor: 'rgba(0, 0, 0, 0.75)',
-              animation: 'typewriter',
-            },
-            transform: {
-              x: 0,
-              y: 0,
-              scale: 1,
-              rotation: 0,
-              opacity: 1,
-              flipH: false,
-              flipV: false,
-              blendMode: 'normal',
-              crop: { top: 0, bottom: 0, left: 0, right: 0 },
-            },
-            colorGrading: {
-              brightness: 0,
-              contrast: 0,
-              saturation: 0,
-              exposure: 0,
-              temperature: 0,
-              tint: 0,
-              vignette: 0,
-              grayscale: 0,
-              sepia: 0,
-              blur: 0,
-              sharpen: 0,
-              invert: false,
-            },
-            audio: { volume: 1, muted: true, pan: 0, fadeIn: 0, fadeOut: 0 },
-            transitionIn: { type: 'fade-to-black', duration: 0.6 },
-            transitionOut: { type: 'cross-dissolve', duration: 0.6 },
-            keyframes: [],
-          };
-          addClip(sampleText);
-        }
-
-        if (audioTrack && samples[2]) {
-          const sampleAudio: TimelineClip = {
-            id: 'clip_sample_beat',
-            trackId: audioTrack.id,
-            assetId: samples[2].id,
-            type: 'audio',
-            name: samples[2].name,
-            start: 0,
-            duration: samples[2].duration,
-            trimStart: 0,
-            trimEnd: samples[2].duration,
-            sourceDuration: samples[2].duration,
-            speed: 1,
-            reverse: false,
-            transform: {
-              x: 0,
-              y: 0,
-              scale: 1,
-              rotation: 0,
-              opacity: 1,
-              flipH: false,
-              flipV: false,
-              blendMode: 'normal',
-              crop: { top: 0, bottom: 0, left: 0, right: 0 },
-            },
-            colorGrading: {
-              brightness: 0,
-              contrast: 0,
-              saturation: 0,
-              exposure: 0,
-              temperature: 0,
-              tint: 0,
-              vignette: 0,
-              grayscale: 0,
-              sepia: 0,
-              blur: 0,
-              sharpen: 0,
-              invert: false,
-            },
-            audio: { volume: 0.8, muted: false, pan: 0, fadeIn: 0.2, fadeOut: 0.5 },
             transitionIn: { type: 'none', duration: 0 },
             transitionOut: { type: 'none', duration: 0 },
             keyframes: [],
           };
-          addClip(sampleAudio);
+          addClip(sampleVideo1);
+          useEditorStore.getState().selectClip('clip_sample_1', false);
+          useEditorStore.getState().setPlayhead(1.37); // 00:00:01:11
+          useEditorStore.getState().setActiveLeftTab('audio');
+          useEditorStore.getState().updateProjectSettings({ name: '1129' });
         }
 
         setStatusMessage('Ready. Offline sample project initialized.');
@@ -273,6 +124,50 @@ export default function App() {
     }, 25000);
     return () => clearInterval(timer);
   }, []);
+
+  // Resize Left Panel
+  const handleLeftResizeMouseDown = (e: React.MouseEvent) => {
+    setIsResizingLeft(true);
+    const startX = e.clientX;
+    const startW = leftPanelWidth;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      const deltaX = ev.clientX - startX;
+      const newW = Math.max(260, Math.min(520, startW + deltaX));
+      setLeftPanelWidth(newW);
+    };
+
+    const onMouseUp = () => {
+      setIsResizingLeft(false);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
+  // Resize Right Inspector
+  const handleInspectorResizeMouseDown = (e: React.MouseEvent) => {
+    setIsResizingInspector(true);
+    const startX = e.clientX;
+    const startW = inspectorWidth;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      const deltaX = startX - ev.clientX;
+      const newW = Math.max(250, Math.min(480, startW + deltaX));
+      setInspectorWidth(newW);
+    };
+
+    const onMouseUp = () => {
+      setIsResizingInspector(false);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
 
   // Vertical resize handle between Upper workspace and Timeline
   const handleResizeMouseDown = (e: React.MouseEvent) => {
@@ -311,15 +206,37 @@ export default function App() {
           className="flex flex-row overflow-hidden"
         >
           {/* Left Media & Tools Panel */}
-          <LeftPanel />
+          <LeftPanel width={leftPanelWidth} />
+
+          {/* Left Resizer */}
+          <div
+            onMouseDown={handleLeftResizeMouseDown}
+            className={`w-1.5 hover:bg-white cursor-col-resize bg-[#1c1c1c] border-x border-[#242424] transition-colors z-20 flex items-center justify-center shrink-0 ${
+              isResizingLeft ? 'bg-white' : ''
+            }`}
+            title="Drag to resize panel"
+          >
+            <div className="h-6 w-0.5 bg-[#444] rounded" />
+          </div>
 
           {/* Center Preview Monitor */}
-          <div className="flex-1 flex flex-col min-w-0 bg-[#0c0c0c]">
+          <div className="flex-1 flex flex-col min-w-0 bg-[#0c0c0c] overflow-hidden">
             <PreviewMonitor />
           </div>
 
+          {/* Right Resizer */}
+          <div
+            onMouseDown={handleInspectorResizeMouseDown}
+            className={`w-1.5 hover:bg-white cursor-col-resize bg-[#1c1c1c] border-x border-[#242424] transition-colors z-20 flex items-center justify-center shrink-0 ${
+              isResizingInspector ? 'bg-white' : ''
+            }`}
+            title="Drag to resize inspector"
+          >
+            <div className="h-6 w-0.5 bg-[#444] rounded" />
+          </div>
+
           {/* Right Properties Inspector */}
-          <PropertiesInspector />
+          <PropertiesInspector width={inspectorWidth} />
         </div>
 
         {/* Horizontal Resize Bar */}

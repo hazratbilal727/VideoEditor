@@ -292,7 +292,43 @@ class ExportEngine {
 
       mediaRecorder.stop();
       const outputBlob = await completionPromise;
-      const downloadUrl = URL.createObjectURL(outputBlob);
+
+      let finalBlob = outputBlob;
+      let finalDownloadUrl = URL.createObjectURL(outputBlob);
+
+      // If MP4 was requested, transcode via local FFmpeg backend
+      if (settings.format === 'mp4') {
+        onProgress({
+          status: 'encoding',
+          progress: 96,
+          currentFrame: totalFrames,
+          totalFrames,
+          currentTime: totalDuration,
+          totalDuration,
+          estimatedRemainingSec: 2,
+        });
+
+        try {
+          const ffmpegRes = await fetch(
+            `/api/export-ffmpeg?filename=${encodeURIComponent(settings.filename)}&fps=${settings.fps}&crf=${settings.quality === 'ultra' ? 16 : settings.quality === 'high' ? 19 : 23}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': outputBlob.type || 'video/webm' },
+              body: outputBlob,
+            }
+          );
+
+          if (ffmpegRes.ok) {
+            const mp4Blob = await ffmpegRes.blob();
+            finalBlob = mp4Blob;
+            finalDownloadUrl = URL.createObjectURL(mp4Blob);
+          } else {
+            console.warn('FFmpeg server export failed, falling back to client stream');
+          }
+        } catch (ffmpegErr) {
+          console.warn('FFmpeg server request error, falling back to client stream:', ffmpegErr);
+        }
+      }
 
       onProgress({
         status: 'completed',
@@ -302,11 +338,11 @@ class ExportEngine {
         currentTime: totalDuration,
         totalDuration,
         estimatedRemainingSec: 0,
-        downloadUrl,
+        downloadUrl: finalDownloadUrl,
       });
 
       audioCtx.close();
-      return outputBlob;
+      return finalBlob;
     } catch (err: unknown) {
       console.error('Export error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Export rendering failed';

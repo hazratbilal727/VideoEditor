@@ -9,16 +9,19 @@ import {
   Search,
   Sparkles,
   Clock,
+  FolderOpen,
 } from 'lucide-react';
 import { useEditorStore } from '../../store/editorStore';
 import { MediaAsset, TimelineClip } from '../../types/editor';
-import { createDefaultSampleAssets, generateSyntheticAudio, generateSyntheticVideo } from '../../services/syntheticMedia';
+import { createDefaultSampleAssets } from '../../services/syntheticMedia';
+import { audioEngine } from '../../services/audioEngine';
 
 export const MediaLibrary: React.FC = () => {
   const { project, playhead, addMediaAsset, removeMediaAsset, addClip, setStatusMessage } = useEditorStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'video' | 'audio' | 'image'>('all');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,7 +37,7 @@ export const MediaLibrary: React.FC = () => {
 
       if (!isVideo && !isAudio && !isImage) continue;
 
-      let duration = 5; // default for images
+      let duration = 5;
       let width = 1920;
       let height = 1080;
       let thumbUrl: string | undefined;
@@ -52,7 +55,7 @@ export const MediaLibrary: React.FC = () => {
           width = videoEl.videoWidth || 1920;
           height = videoEl.videoHeight || 1080;
 
-          // Capture thumbnail
+          // Capture high quality thumbnail frame
           videoEl.currentTime = Math.min(1, duration * 0.1);
           await new Promise((res) => {
             videoEl.onseeked = res;
@@ -64,10 +67,10 @@ export const MediaLibrary: React.FC = () => {
           const ctx = c.getContext('2d');
           if (ctx) {
             ctx.drawImage(videoEl, 0, 0, 160, 90);
-            thumbUrl = c.toDataURL('image/jpeg', 0.7);
+            thumbUrl = c.toDataURL('image/jpeg', 0.8);
           }
         } catch {
-          // fallback duration
+          // fallback
         }
       } else if (isAudio) {
         try {
@@ -85,6 +88,15 @@ export const MediaLibrary: React.FC = () => {
         thumbUrl = url;
       }
 
+      let waveform: number[] | undefined;
+      if (isAudio || isVideo) {
+        try {
+          waveform = await audioEngine.extractWaveform(url, 60);
+        } catch {
+          // ignore
+        }
+      }
+
       const asset: MediaAsset = {
         id: 'asset_' + Math.random().toString(36).substring(2, 9),
         name: file.name,
@@ -95,6 +107,7 @@ export const MediaLibrary: React.FC = () => {
         width,
         height,
         thumbnailUrl: thumbUrl,
+        waveformData: waveform,
         size: file.size,
         dateAdded: Date.now(),
       };
@@ -103,6 +116,14 @@ export const MediaLibrary: React.FC = () => {
     }
 
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleFiles = (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    const fakeEvent = {
+      target: { files: fileList },
+    } as unknown as React.ChangeEvent<HTMLInputElement>;
+    handleFileUpload(fakeEvent);
   };
 
   const handleGenerateSamples = async () => {
@@ -120,7 +141,6 @@ export const MediaLibrary: React.FC = () => {
   };
 
   const handleAddAssetToTimeline = (asset: MediaAsset) => {
-    // Find target track
     let track = project.tracks.find((t) => t.type === (asset.type === 'image' ? 'video' : asset.type));
     if (!track) {
       track = project.tracks[0];
@@ -186,7 +206,25 @@ export const MediaLibrary: React.FC = () => {
   });
 
   return (
-    <div className="flex flex-col h-full bg-[#141414] text-xs">
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDragOver(true);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+          setIsDragOver(false);
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        handleFiles(e.dataTransfer.files);
+      }}
+      className={`relative flex flex-col h-full bg-[#141414] text-xs select-none transition-colors ${
+        isDragOver ? 'bg-[#1b1b1b] ring-2 ring-white/40 ring-inset' : ''
+      }`}
+    >
       {/* Hidden file input */}
       <input
         type="file"
@@ -197,50 +235,50 @@ export const MediaLibrary: React.FC = () => {
         onChange={handleFileUpload}
       />
 
-      {/* Action buttons */}
-      <div className="p-2 border-b border-[#222222] flex items-center gap-1.5">
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="flex-1 flex items-center justify-center gap-1.5 bg-[#202020] hover:bg-[#2b2b2b] text-white py-1.5 px-2 rounded border border-[#333333] transition-colors"
-          title="Import Video, Audio, or Image files"
-        >
-          <Upload size={13} />
-          <span>Import Files</span>
-        </button>
+      {/* Drag & drop overlay indicator */}
+      {isDragOver && (
+        <div className="absolute inset-0 bg-black/85 z-40 flex flex-col items-center justify-center pointer-events-none p-4 text-center">
+          <Upload size={32} className="text-white mb-2 animate-bounce" />
+          <span className="font-semibold text-white text-xs">Drop media files here</span>
+          <span className="text-[10px] text-neutral-400 mt-1">MP4, MOV, WebM, MP3, WAV, PNG, JPG</span>
+        </div>
+      )}
 
-        <button
-          onClick={handleGenerateSamples}
-          disabled={isGenerating}
-          className="flex items-center justify-center gap-1 bg-[#1a1a1a] hover:bg-[#242424] text-neutral-300 py-1.5 px-2 rounded border border-[#2b2b2b] disabled:opacity-40"
-          title="Generate built-in offline test videos & audio"
-        >
-          <Sparkles size={13} />
-          <span>Samples</span>
-        </button>
-      </div>
+      {/* CapCut Style Top Sub-bar: Search & Filter Tabs */}
+      <div className="p-2.5 pb-2 border-b border-[#222222] flex flex-col gap-2 bg-[#121212]">
+        <div className="flex items-center gap-1.5">
+          <div className="relative flex-1">
+            <Search size={12} className="absolute left-2.5 top-2 text-neutral-500" />
+            <input
+              type="text"
+              placeholder="Search local media..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#181818] border border-[#262626] rounded-[4px] pl-7 pr-2 py-1 text-white text-[11px] placeholder-neutral-600 focus:outline-none focus:border-neutral-400"
+            />
+          </div>
 
-      {/* Search and Filters */}
-      <div className="px-2 py-1.5 border-b border-[#222222] flex flex-col gap-1.5">
-        <div className="relative">
-          <Search size={12} className="absolute left-2 top-2 text-neutral-500" />
-          <input
-            type="text"
-            placeholder="Search media..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#111111] border border-[#262626] rounded pl-6 pr-2 py-1 text-white text-[11px] placeholder-neutral-600 focus:outline-none focus:border-white"
-          />
+          <button
+            onClick={handleGenerateSamples}
+            disabled={isGenerating}
+            className="flex items-center gap-1 bg-[#1a1a1a] hover:bg-[#252525] text-neutral-300 py-1 px-2 rounded-[4px] border border-[#2b2b2b] text-[10px] shrink-0 disabled:opacity-40"
+            title="Generate test patterns and sample media"
+          >
+            <Sparkles size={11} />
+            <span>Samples</span>
+          </button>
         </div>
 
+        {/* Filter Pills */}
         <div className="flex items-center gap-1">
           {(['all', 'video', 'audio', 'image'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setFilterType(t)}
-              className={`flex-1 py-0.5 rounded text-[10px] uppercase font-mono tracking-wider ${
+              className={`px-2.5 py-0.5 rounded-[3px] text-[10px] uppercase font-mono tracking-wider transition-colors ${
                 filterType === t
-                  ? 'bg-white text-black font-semibold'
-                  : 'bg-[#181818] text-neutral-400 hover:text-white'
+                  ? 'bg-[#2b2b2b] text-white font-medium border border-[#3b3b3b]'
+                  : 'text-neutral-500 hover:text-neutral-300'
               }`}
             >
               {t}
@@ -249,74 +287,92 @@ export const MediaLibrary: React.FC = () => {
         </div>
       </div>
 
-      {/* Media Assets List / Grid */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
-        {filteredAssets.length === 0 ? (
-          <div className="h-44 flex flex-col items-center justify-center text-neutral-500 text-center px-4">
-            <Upload size={24} className="mb-2 opacity-40 text-neutral-400" />
-            <p className="text-neutral-400 font-medium">No media imported</p>
-            <p className="text-[11px] text-neutral-600 mt-1">
-              Click &quot;Import Files&quot; or &quot;Samples&quot; to begin editing
-            </p>
+      {/* Media Grid & CapCut-Style Big Import Box */}
+      <div className="flex-1 overflow-y-auto p-2.5">
+        <div className="grid grid-cols-2 gap-2">
+          {/* CapCut Big '+ Import' Card */}
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="h-24 bg-[#181818] hover:bg-[#202020] border border-dashed border-[#333333] hover:border-neutral-400 rounded-[4px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all group select-none"
+            title="Click or drag files here to import"
+          >
+            <div className="w-8 h-8 rounded-full bg-[#242424] group-hover:bg-white group-hover:text-black flex items-center justify-center text-neutral-300 transition-colors">
+              <Plus size={16} />
+            </div>
+            <span className="text-[11px] font-medium text-neutral-300 group-hover:text-white">
+              Import
+            </span>
           </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-2">
-            {filteredAssets.map((asset) => (
-              <div
-                key={asset.id}
-                className="group relative bg-[#181818] hover:bg-[#202020] border border-[#262626] hover:border-[#404040] rounded overflow-hidden flex flex-col transition-all cursor-pointer"
-                onClick={() => handleAddAssetToTimeline(asset)}
-              >
-                {/* Media Thumbnail */}
-                <div className="relative h-20 bg-[#0d0d0d] flex items-center justify-center overflow-hidden">
-                  {asset.thumbnailUrl ? (
-                    <img
-                      src={asset.thumbnailUrl}
-                      alt={asset.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : asset.type === 'video' ? (
-                    <Video size={24} className="text-neutral-600" />
-                  ) : asset.type === 'audio' ? (
-                    <Music size={24} className="text-neutral-600" />
-                  ) : (
-                    <ImageIcon size={24} className="text-neutral-600" />
-                  )}
 
-                  {/* Duration Badge */}
-                  <div className="absolute bottom-1 right-1 bg-black/80 px-1 py-0.2 rounded text-[9px] font-mono text-neutral-300 flex items-center gap-0.5">
-                    <Clock size={8} />
-                    <span>{asset.duration.toFixed(1)}s</span>
-                  </div>
+          {/* Imported Media Cards */}
+          {filteredAssets.map((asset) => (
+            <div
+              key={asset.id}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData('application/mono-asset-id', asset.id);
+                e.dataTransfer.effectAllowed = 'copy';
+              }}
+              className="group relative h-24 bg-[#181818] hover:bg-[#1e1e1e] border border-[#262626] hover:border-[#444] rounded-[4px] overflow-hidden flex flex-col justify-between cursor-grab active:cursor-grabbing transition-all select-none"
+              onClick={() => handleAddAssetToTimeline(asset)}
+            >
+              {/* Thumbnail Display */}
+              <div className="relative flex-1 bg-[#0c0c0c] flex items-center justify-center overflow-hidden">
+                {asset.thumbnailUrl ? (
+                  <img
+                    src={asset.thumbnailUrl}
+                    alt={asset.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : asset.type === 'video' ? (
+                  <Video size={22} className="text-neutral-600" />
+                ) : asset.type === 'audio' ? (
+                  <Music size={22} className="text-neutral-600" />
+                ) : (
+                  <ImageIcon size={22} className="text-neutral-600" />
+                )}
 
-                  {/* Hover Add Overlay */}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
-                    <div className="p-1.5 bg-white text-black rounded-full shadow" title="Add to Timeline">
-                      <Plus size={14} />
-                    </div>
-                  </div>
+                {/* Duration Badge */}
+                <div className="absolute bottom-1 right-1 bg-black/85 px-1 py-0.2 rounded text-[9px] font-mono text-neutral-300 flex items-center gap-0.5">
+                  <Clock size={8} />
+                  <span>{asset.duration.toFixed(1)}s</span>
                 </div>
 
-                {/* Name & Delete */}
-                <div className="p-1.5 flex items-center justify-between gap-1">
-                  <span className="truncate text-[11px] text-neutral-200 group-hover:text-white" title={asset.name}>
-                    {asset.name}
-                  </span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeMediaAsset(asset.id);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-0.5 text-neutral-500 hover:text-white transition-opacity"
-                    title="Remove from pool"
+                {/* Hover Add Button (+) */}
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <div
+                    className="w-7 h-7 bg-white text-black rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
+                    title="Add to Timeline at playhead"
                   >
-                    <Trash2 size={12} />
-                  </button>
+                    <Plus size={15} strokeWidth={2.5} />
+                  </div>
                 </div>
+
+                {/* Delete button top right on hover */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeMediaAsset(asset.id);
+                  }}
+                  className="absolute top-1 right-1 p-1 bg-black/70 hover:bg-black text-neutral-400 hover:text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Remove file"
+                >
+                  <Trash2 size={11} />
+                </button>
               </div>
-            ))}
-          </div>
-        )}
+
+              {/* Title strip */}
+              <div className="px-1.5 py-1 bg-[#141414] border-t border-[#202020]">
+                <span
+                  className="truncate text-[10px] text-neutral-300 block font-medium"
+                  title={asset.name}
+                >
+                  {asset.name}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
