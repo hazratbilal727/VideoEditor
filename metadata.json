@@ -1,0 +1,6 @@
+{
+  "name": "Mono Editor",
+  "description": "Professional offline desktop video editor inspired by Premiere Pro, Filmora, and CapCut with multitrack timeline, effects, color grading, and offline rendering.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
